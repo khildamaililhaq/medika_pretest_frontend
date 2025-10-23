@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -15,23 +16,20 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  LinearProgress,
+  Button,
 } from '@mui/material';
 import {
-  Error as OverdueIcon,
-  Schedule as DueSoonIcon,
-  AssignmentReturn as ReturnedIcon,
-  AssignmentTurnedIn as AssignmentReturn,
-  Warning as ActiveIcon,
+  ShoppingCart as ProductIcon,
+  Category as CategoryIcon,
   TrendingUp as TrendingUpIcon,
   Assessment as StatsIcon,
-  Person as PersonIcon,
-  MenuBook as BookIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import Navigation from './components/Navigation';
 import { apiService } from './services/api';
+import Link from 'next/link';
 
-const StatCard = ({ title, value, icon, color, description }) => (
+const StatCard = ({ title, value, icon, color, description, action }) => (
   <Card sx={{ height: '100%' }}>
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -47,6 +45,11 @@ const StatCard = ({ title, value, icon, color, description }) => (
               {description}
             </Typography>
           )}
+          {action && (
+            <Box sx={{ mt: 2 }}>
+              {action}
+            </Box>
+          )}
         </Box>
         <Box sx={{ color: color, fontSize: 40 }}>
           {icon}
@@ -56,39 +59,31 @@ const StatCard = ({ title, value, icon, color, description }) => (
   </Card>
 );
 
-const QuickStatsList = ({ title, items, icon }) => (
-  <Paper sx={{ p: 2, height: '100%' }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-      {icon}
-      <Typography variant="h6" sx={{ ml: 1 }}>
-        {title}
-      </Typography>
+const QuickActions = () => (
+  <Paper sx={{ p: 3 }}>
+    <Typography variant="h6" gutterBottom>
+      Quick Actions
+    </Typography>
+    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Button
+        variant="contained"
+        startIcon={<AddIcon />}
+        component={Link}
+        href="/products/new"
+        sx={{ minWidth: 150 }}
+      >
+        Add Product
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        component={Link}
+        href="/categories/new"
+        sx={{ minWidth: 150 }}
+      >
+        Add Category
+      </Button>
     </Box>
-    <List dense>
-      {items.map((item, index) => (
-        <React.Fragment key={index}>
-          <ListItem>
-            <ListItemIcon>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText
-              primary={item.label}
-              secondary={
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{item.description}</span>
-                  <Chip
-                    label={item.value}
-                    color={item.color || 'default'}
-                    size="small"
-                  />
-                </Box>
-              }
-            />
-          </ListItem>
-          {index < items.length - 1 && <Divider />}
-        </React.Fragment>
-      ))}
-    </List>
   </Paper>
 );
 
@@ -96,67 +91,38 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stats, setStats] = useState({
-    totalLoans: 0,
-    activeLoans: 0,
-    overdueLoans: 0,
-    dueSoonLoans: 0,
-    returnedLoans: 0,
+    totalProducts: 0,
+    totalCategories: 0,
+    publishedProducts: 0,
+    unpublishedProducts: 0,
   });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [recentProducts, setRecentProducts] = useState([]);
 
   const fetchOverviewData = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
-      const [
-        allLoans,
-        activeLoans,
-        overdueLoans,
-        dueSoonLoans,
-        returnedLoans,
-      ] = await Promise.all([
-        apiService.getAll('/loans'),
-        apiService.getActiveLoans(),
-        apiService.getOverdueLoans(),
-        apiService.getLoansDueSoon(),
-        apiService.getReturnedLoans({ per_page: 10 }),
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        apiService.getProducts({ per_page: 10 }),
+        apiService.getCategories({ per_page: 100 })
       ]);
 
+      const products = productsResponse.data || [];
+      const categories = categoriesResponse.data || [];
+
+      const publishedProducts = products.filter(p => p.publish).length;
+      const unpublishedProducts = products.filter(p => !p.publish).length;
+
       setStats({
-        totalLoans: allLoans.length,
-        activeLoans: activeLoans.length,
-        overdueLoans: overdueLoans.length,
-        dueSoonLoans: dueSoonLoans.length,
-        returnedLoans: returnedLoans.length,
+        totalProducts: productsResponse.meta?.total_data || products.length,
+        totalCategories: categoriesResponse.meta?.total_data || categories.length,
+        publishedProducts,
+        unpublishedProducts,
       });
 
-      const activityItems = [];
-      
-      overdueLoans.slice(0, 5).forEach(loan => {
-        activityItems.push({
-          type: 'overdue',
-          loanId: loan.id,
-          borrowerId: loan.borrower_id,
-          bookId: loan.book_id,
-          daysOverdue: loan.days_overdue,
-          timestamp: loan.return_deadline,
-        });
-      });
-      
-      returnedLoans.slice(0, 5).forEach(loan => {
-        activityItems.push({
-          type: 'returned',
-          loanId: loan.id,
-          borrowerId: loan.borrower_id,
-          bookId: loan.book_id,
-          returnedAt: loan.returned_at,
-          timestamp: loan.returned_at,
-        });
-      });
-      
-      activityItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      setRecentActivity(activityItems.slice(0, 8));
+      // Get recent products (assuming API returns them sorted by creation date)
+      setRecentProducts(products.slice(0, 5));
 
     } catch (err) {
       setError('Error fetching overview data: ' + err.message);
@@ -189,77 +155,63 @@ export default function Dashboard() {
     );
   }
 
-  const overallProgress = stats.totalLoans > 0 ? (stats.returnedLoans / stats.totalLoans) * 100 : 0;
-  const criticalIssues = stats.overdueLoans;
-  const urgentIssues = stats.dueSoonLoans;
-
   const mainStats = [
     {
-      title: 'Total Loans',
-      value: stats.totalLoans.toLocaleString(),
-      icon: <StatsIcon fontSize="inherit" />,
+      title: 'Total Products',
+      value: stats.totalProducts.toLocaleString(),
+      icon: <ProductIcon fontSize="inherit" />,
       color: 'primary.main',
-      description: 'All loans in system'
+      description: 'All products in system',
+      action: (
+        <Button
+          size="small"
+          component={Link}
+          href="/products"
+          sx={{ mt: 1 }}
+        >
+          View All
+        </Button>
+      )
     },
     {
-      title: 'Active Loans',
-      value: stats.activeLoans.toLocaleString(),
-      icon: <ActiveIcon fontSize="inherit" />,
-      color: 'info.main',
-      description: 'Currently borrowed books'
+      title: 'Total Categories',
+      value: stats.totalCategories.toLocaleString(),
+      icon: <CategoryIcon fontSize="inherit" />,
+      color: 'secondary.main',
+      description: 'Product categories',
+      action: (
+        <Button
+          size="small"
+          component={Link}
+          href="/categories"
+          sx={{ mt: 1 }}
+        >
+          View All
+        </Button>
+      )
     },
     {
-      title: 'Overdue Loans',
-      value: stats.overdueLoans.toLocaleString(),
-      icon: <OverdueIcon fontSize="inherit" />,
-      color: 'error.main',
-      description: 'Require immediate attention'
+      title: 'Published Products',
+      value: stats.publishedProducts.toLocaleString(),
+      icon: <TrendingUpIcon fontSize="inherit" />,
+      color: 'success.main',
+      description: 'Active products'
     },
     {
-      title: 'Due Soon',
-      value: stats.dueSoonLoans.toLocaleString(),
-      icon: <DueSoonIcon fontSize="inherit" />,
+      title: 'Unpublished Products',
+      value: stats.unpublishedProducts.toLocaleString(),
+      icon: <StatsIcon fontSize="inherit" />,
       color: 'warning.main',
-      description: 'Due within next few days'
+      description: 'Draft products'
     },
   ];
 
-  const systemHealthItems = [
-    {
-      label: 'System Health',
-      description: criticalIssues > 0 ? 'Critical issues detected' : 'All systems operational',
-      value: criticalIssues > 0 ? 'Critical' : 'Good',
-      color: criticalIssues > 0 ? 'error' : 'success',
-      icon: <TrendingUpIcon color={criticalIssues > 0 ? 'error' : 'success'} />
-    },
-    {
-      label: 'Return Rate',
-      description: `${overallProgress.toFixed(1)}% of loans completed`,
-      value: `${overallProgress.toFixed(1)}%`,
-      color: overallProgress > 80 ? 'success' : overallProgress > 60 ? 'warning' : 'error',
-      icon: <AssignmentReturn color={overallProgress > 80 ? 'success' : overallProgress > 60 ? 'warning' : 'error'} />
-    },
-    {
-      label: 'Urgent Actions',
-      description: `${urgentIssues} loans due soon`,
-      value: urgentIssues,
-      color: urgentIssues > 10 ? 'error' : urgentIssues > 5 ? 'warning' : 'success',
-      icon: <DueSoonIcon color={urgentIssues > 10 ? 'error' : urgentIssues > 5 ? 'warning' : 'success'} />
-    },
-  ];
-
-  const activityItems = recentActivity.map(activity => ({
-    label: activity.type === 'overdue' 
-      ? `Loan #${activity.loanId} is overdue`
-      : `Loan #${activity.loanId} returned`,
-    description: activity.type === 'overdue'
-      ? `${activity.daysOverdue} days overdue - Borrower ${activity.borrowerId}`
-      : `Book ${activity.bookId} returned by Borrower ${activity.borrowerId}`,
-    value: activity.type === 'overdue' ? `${activity.daysOverdue}d` : '✓',
-    color: activity.type === 'overdue' ? 'error' : 'success',
-    icon: activity.type === 'overdue' 
-      ? <OverdueIcon color="error" />
-      : <ReturnedIcon color="success" />
+  const recentProductsItems = recentProducts.map(product => ({
+    label: product.name,
+    description: `Category: ${product.category?.name || 'N/A'} • ${product.publish ? 'Published' : 'Unpublished'}`,
+    value: new Date(product.created_at).toLocaleDateString(),
+    color: product.publish ? 'success' : 'default',
+    icon: <ProductIcon color={product.publish ? 'success' : 'action'} />
   }));
 
   return (
@@ -269,7 +221,7 @@ export default function Dashboard() {
           Dashboard
         </Typography>
         <Typography variant="subtitle1" color="textSecondary" paragraph>
-          Comprehensive library management overview
+          Product management system overview
         </Typography>
 
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -282,66 +234,73 @@ export default function Dashboard() {
 
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Overall Progress
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">
-                    Return Completion Rate
-                  </Typography>
-                  <Typography variant="body2">
-                    {overallProgress.toFixed(1)}%
-                  </Typography>
-                </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={overallProgress} 
-                  color={overallProgress > 80 ? 'success' : overallProgress > 60 ? 'warning' : 'error'}
-                  sx={{ height: 8, borderRadius: 4 }}
-                />
-              </Box>
-              <Typography variant="body2" color="textSecondary">
-                {stats.returnedLoans} out of {stats.totalLoans} total loans have been returned
-              </Typography>
-            </Paper>
+            <QuickActions />
           </Grid>
         </Grid>
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <QuickStatsList
-              title="System Health"
-              items={systemHealthItems}
-              icon={<StatsIcon color="primary" />}
-            />
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Recent Products
+              </Typography>
+              {recentProductsItems.length > 0 ? (
+                <List dense>
+                  {recentProductsItems.map((item, index) => (
+                    <React.Fragment key={index}>
+                      <ListItem>
+                        <ListItemIcon>
+                          {item.icon}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={item.label}
+                          secondary={
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>{item.description}</span>
+                              <Chip
+                                label={item.value}
+                                size="small"
+                              />
+                            </Box>
+                          }
+                        />
+                      </ListItem>
+                      {index < recentProductsItems.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  No products found. <Link href="/products/new">Create your first product</Link>
+                </Typography>
+              )}
+            </Paper>
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <QuickStatsList
-              title="Recent Activity"
-              items={activityItems.slice(0, 6)}
-              icon={<TrendingUpIcon color="primary" />}
-            />
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                System Status
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2">API Status</Typography>
+                  <Chip label="Connected" color="success" size="small" />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2">Last Sync</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {new Date().toLocaleString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2">Version</Typography>
+                  <Typography variant="body2" color="textSecondary">v1.0.0</Typography>
+                </Box>
+              </Box>
+            </Paper>
           </Grid>
         </Grid>
-
-        {(criticalIssues > 0 || urgentIssues > 5) && (
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            <Grid item xs={12}>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Critical Attention Required
-                </Typography>
-                <Typography>
-                  {criticalIssues > 0 && `${criticalIssues} overdue loans require immediate attention. `}
-                  {urgentIssues > 5 && `${urgentIssues} loans are due soon and may become overdue.`}
-                </Typography>
-              </Alert>
-            </Grid>
-          </Grid>
-        )}
       </Box>
     </Navigation>
   );

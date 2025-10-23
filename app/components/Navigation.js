@@ -20,22 +20,14 @@ import {
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
-  People as PeopleIcon,
-  MenuBook as BookIcon,
-  Assignment as LoanIcon,
-  CheckCircle as AvailableIcon,
-  Warning as ActiveIcon,
-  ExpandMore as ExpandMoreIcon,
-  Error as OverdueIcon,
-  Schedule as DueSoonIcon,
-  AssignmentReturn as ReturnedIcon,
+  Category as CategoryIcon,
+  ShoppingCart as ProductIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 
 const Navigation = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [booksOpen, setBooksOpen] = useState(false);
-  const [loansOpen, setLoansOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -45,134 +37,75 @@ const Navigation = ({ children }) => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleBooksToggle = () => {
-    setBooksOpen(!booksOpen);
-  };
-
-  const handleLoansToggle = () => {
-    setLoansOpen(!loansOpen);
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await apiService.revokeToken(token);
+      }
+    } catch (error) {
+      console.error('Error revoking token:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/auth/login';
+    }
   };
 
   const drawer = (
     <Box>
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
-          Library System
+          Product Management
         </Typography>
       </Toolbar>
       <Divider />
       <List>
-        <ListItem 
-          component={Link} 
-          href="/"
-          onClick={() => isMobile && setMobileOpen(false)}
+        <ListItem
+          component={Link}
+          href="/products"
+          onClick={() => setMobileOpen(false)}
           sx={{
             '&:hover': {
               backgroundColor: 'action.hover',
             },
           }}
         >
-          <ListItemIcon><DashboardIcon /></ListItemIcon>
-          <ListItemText primary="Dashboard" />
+          <ListItemIcon><ProductIcon /></ListItemIcon>
+          <ListItemText primary="Products" />
         </ListItem>
-        
-        <ListItemButton onClick={handleBooksToggle}>
-          <ListItemIcon><BookIcon /></ListItemIcon>
-          <ListItemText primary="Books" />
-          <ExpandMoreIcon sx={{ transform: booksOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
-        </ListItemButton>
-        <Collapse in={booksOpen} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding>
-            <ListItem 
-              component={Link} 
-              href="/books"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><BookIcon /></ListItemIcon>
-              <ListItemText primary="All Books" />
-            </ListItem>
-            <ListItem 
-              component={Link} 
-              href="/books/available"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><AvailableIcon /></ListItemIcon>
-              <ListItemText primary="Available Books" />
-            </ListItem>
-          </List>
-        </Collapse>
-        
-        <ListItem 
-          component={Link} 
-          href="/borrowers"
-          onClick={() => isMobile && setMobileOpen(false)}
+
+        <ListItem
+          component={Link}
+          href="/categories"
+          onClick={() => setMobileOpen(false)}
           sx={{
             '&:hover': {
               backgroundColor: 'action.hover',
             },
           }}
         >
-          <ListItemIcon><PeopleIcon /></ListItemIcon>
-          <ListItemText primary="Borrowers" />
+          <ListItemIcon><CategoryIcon /></ListItemIcon>
+          <ListItemText primary="Categories" />
         </ListItem>
-        
-        <ListItemButton onClick={handleLoansToggle}>
-          <ListItemIcon><LoanIcon /></ListItemIcon>
-          <ListItemText primary="Loans" />
-          <ExpandMoreIcon sx={{ transform: loansOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
-        </ListItemButton>
-        <Collapse in={loansOpen} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding>
-            <ListItem 
-              component={Link} 
-              href="/loans"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><LoanIcon /></ListItemIcon>
-              <ListItemText primary="All Loans" />
-            </ListItem>
-            <ListItem 
-              component={Link} 
-              href="/loans/active"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><ActiveIcon /></ListItemIcon>
-              <ListItemText primary="Active Loans" />
-            </ListItem>
-            <ListItem 
-              component={Link} 
-              href="/loans/overdue"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><OverdueIcon /></ListItemIcon>
-              <ListItemText primary="Overdue Loans" />
-            </ListItem>
-            <ListItem 
-              component={Link} 
-              href="/loans/due-soon"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><DueSoonIcon /></ListItemIcon>
-              <ListItemText primary="Due Soon" />
-            </ListItem>
-            <ListItem 
-              component={Link} 
-              href="/loans/returned"
-              onClick={() => isMobile && setMobileOpen(false)}
-              sx={{ pl: 4, '&:hover': { backgroundColor: 'action.hover' } }}
-            >
-              <ListItemIcon><ReturnedIcon /></ListItemIcon>
-              <ListItemText primary="Returned Loans" />
-            </ListItem>
-          </List>
-        </Collapse>
-        
+
+        <Divider sx={{ my: 2 }} />
+
+        <ListItem
+          button
+          onClick={() => {
+            handleLogout();
+            setMobileOpen(false);
+          }}
+          sx={{
+            '&:hover': {
+              backgroundColor: 'action.hover',
+            },
+          }}
+        >
+          <ListItemIcon><LogoutIcon /></ListItemIcon>
+          <ListItemText primary="Logout" />
+        </ListItem>
       </List>
     </Box>
   );
@@ -197,7 +130,7 @@ const Navigation = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            Library Management System
+            Product Management System
           </Typography>
         </Toolbar>
       </AppBar>
