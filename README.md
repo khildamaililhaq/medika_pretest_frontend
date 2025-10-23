@@ -34,6 +34,8 @@ Sistem Manajemen Produk yang komprehensif dibangun dengan Next.js 15, Material U
    Edit `.env.local` dan update URL API sesuai dengan backend Anda:
    ```env
    NEXT_PUBLIC_API_BASE_URL=http://medika_pretest.localhost
+   CLIENT_ID={didapatkan dari ./run bundle exec rake auth:setup pada Backend}
+   CLIENT_SECRET={didapatkan dari ./run bundle exec rake auth:setup pada Backend}
    ```
 
 3. **Jalankan server development**
