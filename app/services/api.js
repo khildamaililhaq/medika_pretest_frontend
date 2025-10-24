@@ -181,6 +181,18 @@ export const apiService = {
     }
   },
 
+  exportProducts: async (params = {}) => {
+    try {
+      const response = await api.get('/products/export', {
+        params,
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   getAll: async (endpoint, params = {}) => {
     try {
       const response = await api.get(endpoint, { params });
